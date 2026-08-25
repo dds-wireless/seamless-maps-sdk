@@ -11,7 +11,7 @@
 <!-- The commands you ran, and what you saw. -->
 
 ```
-pnpm typecheck && pnpm test && pnpm build && pnpm run audit
+make check
 ```
 
 ## Checklist

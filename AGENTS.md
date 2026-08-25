@@ -20,7 +20,7 @@ Every non-trivial task: **classify -> open a ledger -> decide -> execute and jou
   about 30 days out.
 - Journal each session, always ending with a `⤷ Next pickup` line.
 - Close it in the session that finishes the work: `status: done` **and** moved to `plans/done/`.
-- `pnpm run audit` must pass before you claim done. CI runs it.
+- `make audit` must pass before you claim done. CI runs it.
 
 Work executing here is ledgered **here**. The platform repository's ledger covers only its own
 phases; do not reopen it to record SDK work, and do not record platform work in these ledgers.
@@ -54,6 +54,6 @@ Both live in the platform repository. `docs/adr/README.md` records what they say
 
 ## Quality gates
 
-`pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm run audit`. Tests come first - RED, then GREEN. The
+`make check`. Tests come first - RED, then GREEN. The
 published artifacts are smoke-tested from `dist/`, because a build that typechecks and does not
 load is the failure mode that reaches customers.

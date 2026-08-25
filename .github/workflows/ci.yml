@@ -21,7 +21,7 @@ jobs:
       # because a build that typechecks and does not load is what reaches customers.
       - run: pnpm build
       - run: pnpm test
-      - run: pnpm run audit
+      - run: make audit
 
   generated-is-current:
     runs-on: ubuntu-latest

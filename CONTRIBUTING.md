@@ -9,7 +9,7 @@ pnpm install
 pnpm test          # vitest
 pnpm typecheck
 pnpm build         # ESM + UMD + .d.ts
-pnpm run audit     # repository governance checks (`pnpm audit` is a pnpm builtin)
+make audit         # governance checks (`pnpm audit` is a pnpm builtin - use make)
 ```
 
 Node 20+ and pnpm 9.
@@ -51,7 +51,7 @@ version tracks the SDK, not the API's URL versions, which are deliberately not u
 
 Non-trivial work opens a ledger in `plans/active/` (copy `plans/_templates/work-ledger.md`), is
 journalled as it goes, and is closed - `status: done`, moved to `plans/done/` - in the session that
-finishes it. `pnpm run audit` enforces this. See [AGENTS.md](./AGENTS.md).
+finishes it. `make audit` enforces this. See [AGENTS.md](./AGENTS.md).
 
 ## Never in a commit, ledger or issue
 
