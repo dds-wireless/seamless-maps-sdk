@@ -1,0 +1,11 @@
+# Pinning actions to commit SHAs (see release.yml) trades a supply-chain risk for a
+# maintenance one: a pinned SHA never picks up its own security fixes. This closes
+# that loop by opening a PR when a pinned action moves.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
