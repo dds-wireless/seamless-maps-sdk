@@ -35,6 +35,30 @@ describe.skipIf(!built)('the published artifacts', () => {
     expect(typeof sdk!['createTransformRequest']).toBe('function');
   });
 
+  it('loads through an AMD loader, as Ember app.import needs', () => {
+    const source = readFileSync(at('seamless-maps-sdk.umd.js'), 'utf8');
+    let registeredName: string | null | undefined;
+    let exported: Record<string, unknown> | undefined;
+    const define = (name: unknown, deps: unknown, factory?: (exports: Record<string, unknown>) => void) => {
+      if (typeof name !== 'string') {
+        factory = deps as typeof factory;
+        registeredName = null;
+      } else {
+        registeredName = name;
+      }
+      if (typeof deps === 'function') factory = deps as typeof factory;
+      exported = {};
+      factory!(exported);
+    };
+    (define as unknown as { amd: boolean }).amd = true;
+    runInContext(source, createContext({ define, console }));
+
+    // Anonymous: `app.import` with an `amd` transformation names it at import time.
+    expect(registeredName).toBeNull();
+    expect(typeof exported!['createClient']).toBe('function');
+    expect(typeof exported!['createMap']).toBe('function');
+  });
+
   it('bundles no dependencies into the UMD build', () => {
     const source = readFileSync(at('seamless-maps-sdk.umd.js'), 'utf8');
     expect(source).not.toContain('node_modules');
