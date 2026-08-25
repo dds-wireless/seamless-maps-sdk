@@ -1,0 +1,108 @@
+# Publishing is manual and deliberate: an npm version number can never be reused,
+# so the irreversible step is put behind a human typing the version they mean.
+#
+# Every guard below runs before anything is published, and the full CI gate is
+# re-run here rather than trusting the `ci` run on the same commit - a release is
+# the one build where "it passed earlier" is not good enough.
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to publish. Must match package.json exactly, e.g. 0.1.0
+        required: true
+      dry_run:
+        description: Pack and validate, but do not publish
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the tag and the GitHub release
+      id-token: write # OIDC, which is what lets npm attach provenance
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 } # tags, so the "already released" guard can see them
+
+      - uses: pnpm/action-setup@v4 # version comes from package.json "packageManager"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org # writes the auth line npm publish needs
+
+      # --- guards: everything that can be wrong is cheaper to catch here ---------
+      - name: The input must match package.json
+        run: |
+          declared="$(node -p "require('./package.json').version")"
+          if [ "$declared" != "${{ inputs.version }}" ]; then
+            echo "::error::package.json is $declared but you asked to publish ${{ inputs.version }}."
+            echo "::error::Bump package.json first, or re-run with $declared."
+            exit 1
+          fi
+
+      - name: The version must not already be released
+        run: |
+          if git rev-parse -q --verify "refs/tags/v${{ inputs.version }}" >/dev/null; then
+            echo "::error::Tag v${{ inputs.version }} already exists. npm versions cannot be reused."
+            exit 1
+          fi
+          if npm view "seamless-maps-sdk@${{ inputs.version }}" version >/dev/null 2>&1; then
+            echo "::error::seamless-maps-sdk@${{ inputs.version }} is already on the registry."
+            exit 1
+          fi
+
+      - name: CHANGELOG must document this version
+        run: |
+          if ! grep -q "^## \[${{ inputs.version }}\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [${{ inputs.version }}]' section."
+            echo "::error::A release nobody can read the notes for is not a release."
+            exit 1
+          fi
+
+      # --- the same gate CI runs, in the same order -----------------------------
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm fmt:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: pnpm test
+      - run: make audit
+
+      - name: Show exactly what would ship
+        run: npm pack --dry-run
+
+      # --- the irreversible part ------------------------------------------------
+      - name: Publish to npm
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Tag the released commit
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ inputs.version }}" -m "seamless-maps-sdk v${{ inputs.version }}"
+          git push origin "v${{ inputs.version }}"
+
+      - name: Create the GitHub release
+        if: ${{ !inputs.dry_run }}
+        run: |
+          # The release notes are the CHANGELOG section itself, so the two can
+          # never drift; the guard above already proved the section exists.
+          awk -v v="${{ inputs.version }}" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## / { exit }
+            on { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          gh release create "v${{ inputs.version }}" \
+            --title "v${{ inputs.version }}" --notes-file "$RUNNER_TEMP/notes.md"
+        env:
+          GH_TOKEN: ${{ github.token }}
