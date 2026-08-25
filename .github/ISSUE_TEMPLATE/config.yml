@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/dds-wireless/seamless-maps-sdk/security/advisories/new
+    about: Report privately. Never in a public issue.
+  - name: A problem with the hosted API, not the SDK
+    url: https://github.com/dds-wireless/seamless-maps-sdk/issues/new?labels=upstream&template=bug_report.yml
+    about: Wrong results, 5xx responses, or behaviour differing from the published contract.

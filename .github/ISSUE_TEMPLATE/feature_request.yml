@@ -1,0 +1,27 @@
+name: Feature request
+description: Something the SDK should do and does not.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Some things were decided deliberately and are not oversights - the absence of CJS, the
+        `maplibre-gl` peer being optional, no runtime dependencies, and what `createMap()` does
+        about attribution. See [docs/adr/README.md](../blob/main/docs/adr/README.md) first; if you
+        want one of those reconsidered, new evidence is what moves it.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do that the SDK makes hard
+      description: The problem, not the proposed API.
+    validations: { required: true }
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you are doing instead today
+    validations: { required: true }
+  - type: textarea
+    id: shape
+    attributes:
+      label: What the call might look like
+      render: ts

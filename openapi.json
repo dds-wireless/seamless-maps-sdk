@@ -1,0 +1,1336 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Seamless Maps API",
+    "summary": "Geocoding, distance matrix and vector basemap tiles.",
+    "description": "The customer-facing API. Every request is authenticated with an API key and routed through the gateway.\n\nThis document describes the **data plane** only. The control-plane API that manages keys, plans and organizations is a separate, non-public document (ADR-030).",
+    "version": "1.0.0",
+    "license": {
+      "name": "Proprietary",
+      "url": "https://seamlessmaps.ddswireless.net/terms"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://seamlessmaps-api.ddswireless.net",
+      "description": "Production"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Distance Matrix",
+      "description": "Travel time and distance across an origin-destination grid. One request, one billed unit, regardless of grid size."
+    },
+    {
+      "name": "Geocoding",
+      "description": "Resolve addresses to coordinates and back. Billed per request."
+    },
+    {
+      "name": "Map Display",
+      "description": "Vector basemap tiles. Billed per **map load** at `style.json`; the tiles, fonts and sprites that load afterwards are free."
+    }
+  ],
+  "paths": {
+    "/v2/distance-matrix": {
+      "post": {
+        "summary": "Travel time and distance for every origin-destination pair",
+        "description": "One request returns the whole grid and counts as **one** billed request regardless of how many pairs it contains.",
+        "tags": [
+          "Distance Matrix"
+        ],
+        "operationId": "postV2DistanceMatrix",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatrixRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatrixResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A required field is missing or malformed. Note the shape differs from every other error on this API.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatrixValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No API key, or the key is invalid, revoked or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is not scoped to this service, or your plan does not include this service or route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limit_exceeded` (retry after `retry_after_seconds`) or `service_quota_exceeded` (retrying will not help - upgrade).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The backend service could not be reached. Safe to retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyBearer": []
+          }
+        ],
+        "x-billed": true,
+        "x-metering-strategy": "per_request",
+        "x-billing-unit": "requests",
+        "x-service": "travel-oracle",
+        "x-verified-against": "live"
+      }
+    },
+    "/v1/geocode/search": {
+      "get": {
+        "summary": "Resolve a freeform address to a coordinate",
+        "tags": [
+          "Geocoding"
+        ],
+        "operationId": "getV1GeocodeSearch",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Freeform address query."
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            },
+            "description": "Focus latitude - biases results toward a viewport."
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            },
+            "description": "Focus longitude."
+          },
+          {
+            "name": "fuzziness",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "balanced",
+                "loose"
+              ],
+              "default": "balanced"
+            },
+            "description": "An unrecognised value is rejected with 422."
+          },
+          {
+            "name": "debug",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Populate `debug_trace` with scoring internals."
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "deprecated": true,
+            "description": "**Do not use.** Region hint. An ISO 3166-2 value such as `CA-BC` currently causes a 500 in the geocoder; bare values such as `BC` or `CAN` return 200. Documented here only because the consumer docs page advertised it. Tracked against the geocoder repo (ADR-021)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeocodeSearchResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No API key, or the key is invalid, revoked or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is not scoped to this service, or your plan does not include this service or route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A required parameter is missing, or a parameter value is not accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeocoderValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limit_exceeded` (retry after `retry_after_seconds`) or `service_quota_exceeded` (retrying will not help - upgrade).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The backend service could not be reached. Safe to retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyBearer": []
+          }
+        ],
+        "x-billed": true,
+        "x-metering-strategy": "per_request",
+        "x-billing-unit": "requests",
+        "x-service": "geocoding",
+        "x-verified-against": "live"
+      }
+    },
+    "/v1/geocode/reverse": {
+      "get": {
+        "summary": "Resolve a coordinate to the nearest address",
+        "tags": [
+          "Geocoding"
+        ],
+        "operationId": "getV1GeocodeReverse",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 1
+            },
+            "description": "Total results including `primary`, so `limit=5` yields `primary` plus four `alternates`. Out of range is rejected with 422."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeocodeReverseResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No API key, or the key is invalid, revoked or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is not scoped to this service, or your plan does not include this service or route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeocoderValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limit_exceeded` (retry after `retry_after_seconds`) or `service_quota_exceeded` (retrying will not help - upgrade).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The backend service could not be reached. Safe to retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyBearer": []
+          }
+        ],
+        "x-billed": true,
+        "x-metering-strategy": "per_request",
+        "x-billing-unit": "requests",
+        "x-service": "geocoding",
+        "x-verified-against": "live"
+      }
+    },
+    "/v1/geocode/autocomplete": {
+      "get": {
+        "summary": "Suggest addresses for a partial query",
+        "tags": [
+          "Geocoding"
+        ],
+        "operationId": "getV1GeocodeAutocomplete",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Partial address query."
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            },
+            "description": "Focus latitude."
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            },
+            "description": "Focus longitude."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Maximum suggestions to return. Out of range is rejected with 422."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutocompleteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No API key, or the key is invalid, revoked or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is not scoped to this service, or your plan does not include this service or route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeocoderValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limit_exceeded` (retry after `retry_after_seconds`) or `service_quota_exceeded` (retrying will not help - upgrade).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The backend service could not be reached. Safe to retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyBearer": []
+          }
+        ],
+        "x-billed": true,
+        "x-metering-strategy": "per_request",
+        "x-billing-unit": "requests",
+        "x-service": "geocoding",
+        "x-verified-against": "live"
+      }
+    },
+    "/v1/tiles/style.json": {
+      "get": {
+        "summary": "Start a map session and fetch the basemap style",
+        "description": "**This is the billed request.** It mints a short-lived session token and embeds it in the tile URLs it returns; the tiles themselves are not counted. Fetch it once per map session - re-fetching bills another map load.",
+        "tags": [
+          "Map Display"
+        ],
+        "operationId": "getV1TilesStyleJson",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StyleJson"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No API key, or the key is invalid, revoked or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is not scoped to this service, or your plan does not include this service or route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`rate_limit_exceeded` (retry after `retry_after_seconds`) or `service_quota_exceeded` (retrying will not help - upgrade).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The backend service could not be reached. Safe to retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyBearer": []
+          }
+        ],
+        "x-billed": true,
+        "x-metering-strategy": "per_session",
+        "x-billing-unit": "map loads",
+        "x-service": "tile-service",
+        "x-verified-against": "live"
+      }
+    },
+    "/v1/tiles/{z}/{x}/{y}": {
+      "get": {
+        "summary": "Fetch one vector tile",
+        "description": "Authenticated by the **session token** from `style.json`, not by your API key. Not billed. A map renderer requests these automatically from the style document; you should rarely call this yourself.",
+        "tags": [
+          "Map Display"
+        ],
+        "operationId": "getV1TilesZXY",
+        "parameters": [
+          {
+            "name": "z",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "x",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "y",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The session token, already present in the tile URLs `style.json` returns."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A Mapbox Vector Tile.",
+            "content": {
+              "application/x-protobuf": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "`invalid_session_token` - the token is missing, malformed or expired. Fetch a fresh `style.json`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayError"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-billed": false,
+        "x-metering-strategy": "per_session",
+        "x-billing-unit": "map loads",
+        "x-service": "tile-service",
+        "x-verified-against": "live",
+        "x-auth": "session-token"
+      }
+    },
+    "/v1/tiles/fonts/{assetPath}": {
+      "get": {
+        "summary": "Fetch a glyph range",
+        "description": "Unauthenticated static asset, referenced by the style's `glyphs` URL. Not billed.",
+        "tags": [
+          "Map Display"
+        ],
+        "operationId": "getV1TilesFontsAssetPath",
+        "parameters": [
+          {
+            "name": "assetPath",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Asset path beneath this prefix, taken from the style document."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/x-protobuf": {
+                "schema": {}
+              }
+            }
+          },
+          "404": {
+            "description": "No such asset at that path."
+          }
+        },
+        "security": [],
+        "x-billed": false,
+        "x-metering-strategy": "per_session",
+        "x-billing-unit": "map loads",
+        "x-service": "tile-service",
+        "x-verified-against": "live"
+      }
+    },
+    "/v1/tiles/sprite/{assetPath}": {
+      "get": {
+        "summary": "Fetch a sprite sheet or index",
+        "description": "Unauthenticated static asset, referenced by the style's `sprite` URL. Not billed.",
+        "tags": [
+          "Map Display"
+        ],
+        "operationId": "getV1TilesSpriteAssetPath",
+        "parameters": [
+          {
+            "name": "assetPath",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Asset path beneath this prefix, taken from the style document."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success."
+          },
+          "404": {
+            "description": "No such asset at that path."
+          }
+        },
+        "security": [],
+        "x-billed": false,
+        "x-metering-strategy": "per_session",
+        "x-billing-unit": "map loads",
+        "x-service": "tile-service",
+        "x-verified-against": "live"
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your API key, as `Authorization: Bearer pk_live_...`. `X-API-Key: pk_live_...` is accepted as an alternative."
+      }
+    },
+    "schemas": {
+      "GatewayError": {
+        "type": "object",
+        "description": "The envelope for every rejection **the gateway itself** produces. See `UpstreamValidationError` - a request rejected by a backend service does not use this shape.",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Branch on this, never on `message`.",
+                "enum": [
+                  "missing_api_key",
+                  "invalid_api_key",
+                  "expired_api_key",
+                  "invalid_session_token",
+                  "subscription_required",
+                  "subscription_expired",
+                  "service_not_allowed",
+                  "service_not_in_plan",
+                  "route_not_in_plan",
+                  "rate_limit_exceeded",
+                  "service_quota_exceeded",
+                  "gateway_error",
+                  "unauthenticated",
+                  "upstream_unavailable",
+                  "internal_error"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "description": "Written for humans. Will change."
+              },
+              "upgrade_url": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Where to upgrade, when the rejection is a plan or quota limit. Absent on `invalid_session_token`."
+              },
+              "retry_after_seconds": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Set on `rate_limit_exceeded`. Absent on `invalid_session_token`."
+              }
+            }
+          }
+        }
+      },
+      "MatchedAddress": {
+        "type": "object",
+        "description": "The address components the match resolved to. Every field is nullable: a street-centroid match knows a street but no house number, and `state`/`country` are frequently null even on a good match.",
+        "properties": {
+          "house_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Casing is not normalized and differs between endpoints - `search` has returned `Greater Vancouver` where `reverse` returned `vancouver`. Do not compare case-sensitively."
+          },
+          "state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "GeocodeCandidate": {
+        "type": "object",
+        "required": [
+          "lat",
+          "lon",
+          "confidence",
+          "method",
+          "matched"
+        ],
+        "properties": {
+          "lat": {
+            "type": "number"
+          },
+          "lon": {
+            "type": "number"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "method": {
+            "type": "string",
+            "description": "How the match was made. `address_point` is an exact address; coarser tiers fall back to street or locality centroids.",
+            "examples": [
+              "address_point",
+              "street_centroid"
+            ]
+          },
+          "matched": {
+            "$ref": "#/components/schemas/MatchedAddress"
+          },
+          "score": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "number"
+            },
+            "description": "Internal scoring vector. Unstable across geocoder releases - do not depend on its length or element meaning."
+          },
+          "road_lat": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Nearest road-network point, when the match was snapped to one."
+          },
+          "road_lon": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      },
+      "GeocodeSearchResponse": {
+        "type": "object",
+        "required": [
+          "query",
+          "alternates"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Echoes the `q` you sent."
+          },
+          "primary": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/GeocodeCandidate"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "**Absent or null when nothing matched.** Check before reading coordinates."
+          },
+          "alternates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GeocodeCandidate"
+            },
+            "description": "Descending confidence."
+          },
+          "candidates_evaluated": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "debug_trace": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Populated only when `debug=true`."
+          }
+        }
+      },
+      "GeocodeReverseResponse": {
+        "type": "object",
+        "required": [
+          "query_lat",
+          "query_lon",
+          "matched"
+        ],
+        "properties": {
+          "query_lat": {
+            "type": "number"
+          },
+          "query_lon": {
+            "type": "number"
+          },
+          "match_tier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "examples": [
+              "address_point"
+            ]
+          },
+          "distance_m": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Metres from the queried point to the matched address."
+          },
+          "lat": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lon": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "matched": {
+            "$ref": "#/components/schemas/MatchedAddress"
+          },
+          "alternates": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "AutocompleteSuggestion": {
+        "type": "object",
+        "required": [
+          "label",
+          "kind",
+          "lat",
+          "lon"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "examples": [
+              "Robson Street"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "examples": [
+              "street"
+            ]
+          },
+          "lat": {
+            "type": "number"
+          },
+          "lon": {
+            "type": "number"
+          },
+          "admin_label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Human-readable region, for disambiguating identically-named streets.",
+            "examples": [
+              "Greater Vancouver"
+            ]
+          },
+          "house_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ref": {
+            "type": "object",
+            "description": "Opaque handle for the suggestion. Pass it back rather than re-parsing `label`.",
+            "properties": {
+              "country": {
+                "type": "string",
+                "examples": [
+                  "CAN"
+                ]
+              },
+              "a1": {
+                "type": "string",
+                "examples": [
+                  "BC"
+                ]
+              },
+              "street_normalized": {
+                "type": "string"
+              },
+              "lat": {
+                "type": "number"
+              },
+              "lon": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "AutocompleteResponse": {
+        "type": "object",
+        "required": [
+          "query",
+          "suggestions"
+        ],
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutocompleteSuggestion"
+            }
+          }
+        }
+      },
+      "LatLonPoint": {
+        "type": "object",
+        "required": [
+          "point"
+        ],
+        "properties": {
+          "point": {
+            "type": "object",
+            "required": [
+              "latitude",
+              "longitude"
+            ],
+            "properties": {
+              "latitude": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "longitude": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            }
+          }
+        }
+      },
+      "MatrixRequest": {
+        "type": "object",
+        "required": [
+          "origins",
+          "destinations"
+        ],
+        "properties": {
+          "origins": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/LatLonPoint"
+            }
+          },
+          "destinations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/LatLonPoint"
+            }
+          },
+          "options": {
+            "type": "object",
+            "properties": {
+              "departAt": {
+                "type": "string",
+                "description": "Local departure time, `YYYY-MM-DDTHH:mm`. Selects the day-of-week speed profile. Defaults to now.",
+                "examples": [
+                  "2026-08-21T08:00"
+                ]
+              }
+            }
+          }
+        },
+        "description": "`options` may be omitted entirely, in which case `departAt` defaults to now. No coordinate bounds validation beyond latitude/longitude range is applied by the backend."
+      },
+      "MatrixResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "summary"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "description": "One entry per pair. The consumer docs state that an unroutable pair is omitted and counted in `summary.failures`; **that behaviour could not be reproduced** - a destination in the middle of the Pacific returned a successful 322km route rather than a failure, so out-of-region coordinates appear to snap to the nearest road in the loaded region instead of failing. Treat a result far from the point you sent as suspect, and validate coordinates yourself.",
+            "items": {
+              "type": "object",
+              "required": [
+                "originIndex",
+                "destinationIndex",
+                "routeSummary"
+              ],
+              "properties": {
+                "originIndex": {
+                  "type": "integer",
+                  "description": "Index into the `origins` array you sent. Match on this rather than assuming response order."
+                },
+                "destinationIndex": {
+                  "type": "integer"
+                },
+                "routeSummary": {
+                  "type": "object",
+                  "properties": {
+                    "lengthInMeters": {
+                      "type": "integer"
+                    },
+                    "travelTimeInSeconds": {
+                      "type": "integer"
+                    },
+                    "departureTime": {
+                      "type": "string"
+                    },
+                    "arrivalTime": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "successes": {
+                "type": "integer"
+              },
+              "failures": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "StyleJson": {
+        "type": "object",
+        "description": "A MapLibre/Mapbox GL style document (spec version 8). The gateway rewrites `sources.*.tiles` to absolute URLs carrying a short-lived **session token**, so this document must be fetched fresh per map session and never cached across sessions.",
+        "required": [
+          "version",
+          "sources",
+          "layers"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 8
+          },
+          "sources": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "examples": [
+                    "vector"
+                  ]
+                },
+                "tiles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Absolute tile URLs with `?token=` already applied."
+                },
+                "minzoom": {
+                  "type": "integer"
+                },
+                "maxzoom": {
+                  "type": "integer"
+                },
+                "attribution": {
+                  "type": "string",
+                  "description": "**Required credit (ODbL + CC-BY).** Must remain visible in any deployed map."
+                }
+              }
+            }
+          },
+          "sprite": {
+            "type": "string"
+          },
+          "glyphs": {
+            "type": "string"
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "GeocoderValidationError": {
+        "type": "object",
+        "description": "Returned with **422** when the geocoder rejects a parameter. This is FastAPI's own shape, passed through unchanged. Documented because customers receive it, not because it is desirable - see `MatrixValidationError` for the different shape the matrix backend returns.",
+        "required": [
+          "detail"
+        ],
+        "properties": {
+          "detail": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "examples": [
+                    "missing"
+                  ]
+                },
+                "loc": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "examples": [
+                    [
+                      "query",
+                      "q"
+                    ]
+                  ]
+                },
+                "msg": {
+                  "type": "string",
+                  "examples": [
+                    "Field required"
+                  ]
+                },
+                "input": {}
+              }
+            }
+          }
+        }
+      },
+      "MatrixValidationError": {
+        "type": "object",
+        "description": "Returned with **400** when the matrix backend rejects the request body. This is Hapi's own shape and is **not** the same as either the gateway envelope or the geocoder's 422. Three backends currently leak three different error formats; only gateway-generated rejections use the `GatewayError` envelope.",
+        "required": [
+          "statusCode",
+          "error",
+          "message"
+        ],
+        "properties": {
+          "statusCode": {
+            "type": "integer",
+            "examples": [
+              400
+            ]
+          },
+          "error": {
+            "type": "string",
+            "examples": [
+              "Bad Request"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "examples": [
+              "\"origins\" is required"
+            ]
+          },
+          "validation": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "examples": [
+                  "payload"
+                ]
+              },
+              "keys": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyBearer": []
+    }
+  ]
+}

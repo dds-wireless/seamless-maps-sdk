@@ -1,0 +1,27 @@
+# ADR-053 decision 2: drift is caught against production, not against a file.
+#
+# `GET /openapi.json` is unauthenticated (ADR-052 decision 4), so this needs no
+# secret. It runs on a schedule rather than on pull requests: production does not
+# serve the document yet, and gating every PR on a route that 404s would leave CI
+# permanently red. Move this into ci.yml once the platform branch is deployed.
+name: contract-drift
+
+on:
+  schedule: [{ cron: '17 6 * * 1-5' }]
+  workflow_dispatch:
+    inputs:
+      gateway_url:
+        description: Gateway to diff against
+        default: https://seamlessmaps-api.ddswireless.net
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Diff the committed contract against the one production serves
+        env:
+          SEAMLESS_GATEWAY_URL: ${{ inputs.gateway_url || vars.SEAMLESS_GATEWAY_URL }}
+        run: node scripts/check-contract-drift.mjs

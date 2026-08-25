@@ -1,0 +1,92 @@
+{
+  "name": "seamless-maps-sdk",
+  "version": "0.1.0",
+  "description": "Official client for the Seamless Maps data plane - geocoding, distance matrix and vector basemaps.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "openapi.json",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/seamless-maps-sdk.umd.js",
+  "jsdelivr": "./dist/seamless-maps-sdk.umd.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./map": {
+      "types": "./dist/map/index.d.ts",
+      "import": "./dist/map/index.js",
+      "default": "./dist/map/index.js"
+    },
+    "./openapi.json": "./openapi.json",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "generate:types": "openapi-typescript openapi.json -o src/generated/dataplane.ts",
+    "contract:drift": "node scripts/check-contract-drift.mjs",
+    "build": "rollup -c",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check .",
+    "audit": "bash scripts/audit.sh",
+    "prepublishOnly": "pnpm run build"
+  },
+  "peerDependencies": {
+    "maplibre-gl": "^4.0.0 || ^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "maplibre-gl": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.17.0",
+    "openapi-typescript": "^7.13.0",
+    "prettier": "^3.4.0",
+    "rollup": "^4.30.0",
+    "rollup-plugin-dts": "^6.1.1",
+    "rollup-plugin-esbuild": "^6.1.1",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.19.0",
+    "vite": "^7",
+    "vitest": "^4.1.11"
+  },
+  "keywords": [
+    "maps",
+    "geocoding",
+    "distance-matrix",
+    "maplibre",
+    "vector-tiles",
+    "seamless-maps"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dds-wireless/seamless-maps-sdk.git"
+  },
+  "homepage": "https://github.com/dds-wireless/seamless-maps-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/dds-wireless/seamless-maps-sdk/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,48 @@
+name: Bug report
+description: Something in the SDK does not behave as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste a real API key, token or customer email.** Mask them: `pk_live_...`.
+
+        If the problem is with the hosted API rather than this package - a wrong result, a 500,
+        a route behaving differently from the contract - say so; we will route it.
+
+        Security vulnerabilities do **not** go here. See [SECURITY.md](../blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: seamless-maps-sdk version
+      placeholder: 0.1.0
+    validations: { required: true }
+  - type: dropdown
+    id: entrypoint
+    attributes:
+      label: Which part
+      options: [geocode, matrix, tiles, map / createMap, client setup or errors, build or types]
+    validations: { required: true }
+  - type: dropdown
+    id: build
+    attributes:
+      label: How are you loading it
+      options: [ESM (bundler), UMD (script tag or app.import), CDN]
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Smallest reproduction
+      render: ts
+    validations: { required: true }
+  - type: textarea
+    id: error
+    attributes:
+      label: The error, if there was one
+      description: '`SeamlessMapsError` carries `code`, `status` and `details` - please include them.'
+      render: text
