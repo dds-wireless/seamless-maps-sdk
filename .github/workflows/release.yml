@@ -33,7 +33,7 @@ jobs:
       # so a third-party action that could be re-pointed is a credential-exfiltration
       # path. The pnpm version itself still comes from package.json "packageManager".
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: pnpm
