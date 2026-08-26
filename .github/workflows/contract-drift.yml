@@ -1,15 +1,19 @@
-# The scheduled half of ADR-053 decision 2.
+# ADR-053 decision 2 wants the committed contract diffed against the document
+# production actually serves. That cannot run on a GitHub-hosted runner: the
+# gateway resolves publicly but is IP-allowlisted, so a runner's fetch fails at
+# the network layer regardless of the contract's contents.
 #
-# `ci.yml` runs the same check on every pull request, which catches *us* changing
-# the committed contract. This one catches *production* changing underneath it -
-# a gateway deploy that alters the document while nobody happens to be opening a
-# PR. Same script, different trigger; neither makes the other redundant.
+# So this is **manual only**. `make drift` does the same thing from a machine
+# inside the allowlist, which is where it currently has to happen. Restoring the
+# schedule - or putting the job back in ci.yml - needs one of: a self-hosted
+# runner inside the perimeter, a narrowly allowlisted CI egress address, or the
+# document served from somewhere publicly reachable.
 #
-# `GET /openapi.json` is unauthenticated (ADR-052 decision 4), so this needs no secret.
+# `GET /openapi.json` itself needs no credential (ADR-052 decision 4); reachability
+# is the only obstacle.
 name: contract-drift
 
 on:
-  schedule: [{ cron: '17 6 * * 1-5' }]
   workflow_dispatch:
     inputs:
       gateway_url:
