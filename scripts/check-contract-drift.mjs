@@ -23,7 +23,10 @@ const flag = (name) => {
   return i === -1 ? undefined : args[i + 1];
 };
 
-const baseUrl = (flag('url') ?? process.env['SEAMLESS_GATEWAY_URL'] ?? DEFAULT_URL).replace(/\/+$/, '');
+// `??` is wrong here: CI expands an unset repository variable to an *empty string*,
+// which is defined, so it would win over the default and collapse the URL to a path.
+const firstSet = (...values) => values.find((v) => typeof v === 'string' && v.trim() !== '');
+const baseUrl = firstSet(flag('url'), process.env['SEAMLESS_GATEWAY_URL'], DEFAULT_URL).replace(/\/+$/, '');
 const write = args.includes('--write');
 const target = `${baseUrl}/openapi.json`;
 
