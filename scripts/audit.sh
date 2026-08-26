@@ -2,6 +2,10 @@
 # Repository governance checks. Fails the build; CI runs it.
 # Ported from the platform repository's check-docs.sh - only the checks that
 # survive the boundary, plus the public-repository set (ADR-053 decision 7).
+#
+# The ledger checks were dropped when this repository went public: it keeps no
+# work ledger (see AGENTS.md), so there was nothing left for them to verify and
+# they would have failed for whoever followed the old instructions first.
 set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
@@ -31,33 +35,7 @@ done
 [ -z "$stray" ] && pass "no stray markdown at the repository root" \
                 || fail "stray markdown at the root:$stray"
 
-# --- 3. Every ledger's status matches its folder ------------------------------
-ledger_fail=0
-for f in plans/active/*.md; do
-  [ -e "$f" ] || continue
-  case "$f" in */_templates/*) continue ;; esac
-  status="$(grep -m1 '^status:' "$f" | awk '{print $2}')"
-  [ "$status" = "done" ] && { fail "$f is status: done but still in plans/active/"; ledger_fail=1; }
-  grep -q '^review-by:' "$f" || { fail "$f has no review-by:"; ledger_fail=1; }
-done
-for f in plans/done/*.md; do
-  [ -e "$f" ] || continue
-  status="$(grep -m1 '^status:' "$f" | awk '{print $2}')"
-  [ "$status" = "done" ] || { fail "$f is in plans/done/ but status: ${status:-missing}"; ledger_fail=1; }
-done
-[ "$ledger_fail" -eq 0 ] && pass "every ledger's status matches its folder"
-
-# --- 4. Every ledger is registered in the index -------------------------------
-index_fail=0
-for f in plans/active/*.md plans/done/*.md; do
-  [ -e "$f" ] || continue
-  case "$f" in */_templates/*) continue ;; esac
-  grep -q "$(basename "$f")" plans/README.md 2>/dev/null \
-    || { fail "$(basename "$f") is not registered in plans/README.md"; index_fail=1; }
-done
-[ "$index_fail" -eq 0 ] && pass "every ledger is registered in plans/README.md"
-
-# --- 5. Every ADR is indexed --------------------------------------------------
+# --- 3. Every ADR is indexed --------------------------------------------------
 adr_fail=0
 for f in docs/adr/*.md; do
   [ -e "$f" ] || continue
@@ -67,17 +45,17 @@ for f in docs/adr/*.md; do
 done
 [ "$adr_fail" -eq 0 ] && pass "every ADR is indexed in docs/adr/README.md"
 
-# --- 6. Generated artifacts carry their warning -------------------------------
+# --- 4. Generated artifacts carry their warning -------------------------------
 grep -q 'auto-generated' src/generated/dataplane.ts 2>/dev/null \
   && pass "src/generated/dataplane.ts is marked generated" \
   || fail "src/generated/dataplane.ts is missing or not marked generated"
 
-# --- 7. No runtime dependencies ----------------------------------------------
+# --- 5. No runtime dependencies ----------------------------------------------
 deps="$(node -p "Object.keys(require('./package.json').dependencies||{}).join(' ')")"
 [ -z "$deps" ] && pass "no runtime dependencies" \
                 || fail "runtime dependencies present: $deps"
 
-# --- 8. No unmasked live key anywhere ----------------------------------------
+# --- 6. No unmasked live key anywhere ----------------------------------------
 if grep -rIn --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git \
      -E '\b(pk|sk)_live_[A-Za-z0-9]{8,}' . >/dev/null 2>&1; then
   fail "an unmasked live key appears in the working tree"
@@ -85,7 +63,7 @@ else
   pass "no unmasked live key in the working tree"
 fi
 
-# --- 9. The committed contract parses and matches the generated types ---------
+# --- 7. The committed contract parses and matches the generated types ---------
 if node -e "JSON.parse(require('fs').readFileSync('openapi.json','utf8'))" >/dev/null 2>&1; then
   pass "openapi.json parses"
 else

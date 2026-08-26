@@ -47,12 +47,12 @@ version tracks the SDK, not the API's URL versions, which are deliberately not u
 
 `CHANGELOG.md` is updated in the same PR as the change it describes.
 
-## Ledgers
+## Recording decisions
 
-Non-trivial work opens a ledger in `plans/active/` (copy `plans/_templates/work-ledger.md`), is
-journalled as it goes, and is closed - `status: done`, moved to `plans/done/` - in the session that
-finishes it. `make audit` enforces this. See [AGENTS.md](./AGENTS.md).
+This repository keeps no work ledger. A decision that changes how the package behaves belongs in
+`docs/adr/` - append-only, superseded by a new ADR rather than edited. Everything else is the
+commit message and `CHANGELOG.md`. See [AGENTS.md](./AGENTS.md).
 
-## Never in a commit, ledger or issue
+## Never in a commit or issue
 
 A real API key, token, password or customer email. Mask them: `pk_live_...`.

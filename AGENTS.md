@@ -14,16 +14,17 @@ knowledge of the gateway's internals, it belongs in the platform repository, not
 
 ## The cycle
 
-Every non-trivial task: **classify -> open a ledger -> decide -> execute and journal -> audit and close.**
+Every non-trivial task: **decide -> execute -> verify -> record the decision where it belongs.**
 
-- Copy `plans/_templates/work-ledger.md` to `plans/active/YYYY-MM-DD-<slug>.md`. Set `review-by:`
-  about 30 days out.
-- Journal each session, always ending with a `⤷ Next pickup` line.
-- Close it in the session that finishes the work: `status: done` **and** moved to `plans/done/`.
-- `make audit` must pass before you claim done. CI runs it.
+- `make check` must pass before you claim done. CI runs the same steps.
+- A decision that changes how this package behaves goes in `docs/adr/`, not in a commit message.
+- `CHANGELOG.md` is updated in the same change, under `[Unreleased]`.
 
-Work executing here is ledgered **here**. The platform repository's ledger covers only its own
-phases; do not reopen it to record SDK work, and do not record platform work in these ledgers.
+**This repository keeps no work ledger.** The platform repository does, because it holds production
+state and a governance gate that depends on it; a published client library does not, and an
+internal work journal is not something a public repository should carry. ADR-053 decision 7 assumed
+otherwise - that assumption did not survive making the repository public, and supersedes cleanly
+with a new ADR rather than being edited in place.
 
 ## Immutables
 
@@ -31,7 +32,7 @@ phases; do not reopen it to record SDK work, and do not record platform work in 
 - **`openapi.json` and `src/generated/` are generated.** Never hand-edit. Refresh with
   `pnpm contract:drift --write` then `pnpm generate:types`.
 - **No runtime dependencies.** `maplibre-gl` is an optional peer of the `/map` entrypoint only.
-- **No real key, token, password or customer email** in a ledger, commit message, issue or log.
+- **No real key, token, password or customer email** in a commit message, issue, or log.
   Mask them: `pk_live_...`.
 
 ## The contract

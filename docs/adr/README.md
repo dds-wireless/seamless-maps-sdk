@@ -39,4 +39,7 @@ of truth; `openapi.json` here is a committed copy of it.
   layered on, so a consumer pinned to a different `maplibre-gl` major can still use it.
 - `createMap()` **warns** when attribution is disabled and exports the required credit as a
   constant: ODbL and CC-BY are licence terms, not style preferences.
-- Governance is **ported, not copied**, and each repository keeps its own ledger.
+- Governance is **ported, not copied**. The ledger half of that decision did not survive making
+  this repository public - a published client library carries no internal work journal - so the
+  platform repository keeps the ledger for both halves. See `AGENTS.md`; the decision supersedes
+  with a new ADR rather than being edited in place.
