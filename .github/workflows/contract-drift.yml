@@ -1,9 +1,11 @@
-# ADR-053 decision 2: drift is caught against production, not against a file.
+# The scheduled half of ADR-053 decision 2.
 #
-# `GET /openapi.json` is unauthenticated (ADR-052 decision 4), so this needs no
-# secret. It runs on a schedule rather than on pull requests: production does not
-# serve the document yet, and gating every PR on a route that 404s would leave CI
-# permanently red. Move this into ci.yml once the platform branch is deployed.
+# `ci.yml` runs the same check on every pull request, which catches *us* changing
+# the committed contract. This one catches *production* changing underneath it -
+# a gateway deploy that alters the document while nobody happens to be opening a
+# PR. Same script, different trigger; neither makes the other redundant.
+#
+# `GET /openapi.json` is unauthenticated (ADR-052 decision 4), so this needs no secret.
 name: contract-drift
 
 on:

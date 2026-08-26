@@ -22,6 +22,22 @@ jobs:
       - run: pnpm test
       - run: make audit
 
+  # ADR-053 decision 2: drift is caught against production, not against a file.
+  # This repository is not co-located with the gateway, so the only thing that can
+  # keep the committed contract honest is the document customers actually receive.
+  # `GET /openapi.json` is unauthenticated (ADR-052 decision 4), so this needs no
+  # secret and is safe on a fork's pull request.
+  contract-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Diff the committed contract against the one production serves
+        env:
+          SEAMLESS_GATEWAY_URL: ${{ vars.SEAMLESS_GATEWAY_URL }}
+        run: node scripts/check-contract-drift.mjs
+
   generated-is-current:
     runs-on: ubuntu-latest
     steps:
